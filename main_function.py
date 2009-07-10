@@ -23,6 +23,9 @@ def process_main_function(module_name, image_base, new_name, procedure_lines, of
 	
 	is_first_line = True
 	
+	initialisation_function_name = 'initialise_%s' % new_name
+	interrupt_function_name = '%s_interrupt' % new_name
+	
 	main_function = """%s
 {
 	__asm
@@ -32,13 +35,13 @@ def process_main_function(module_name, image_base, new_name, procedure_lines, of
 		cmp module_base, 0
 		jnz is_already_initialised
 		
-		call initialisation
+		call %s
 		
 	is_already_initialised:
 	
 		//Actual code starts here:
 		
-""" % signature
+""" % (signature, initialisation_function_name)
 	
 	intra_module_procedures = set()
 	
@@ -168,7 +171,7 @@ def process_main_function(module_name, image_base, new_name, procedure_lines, of
 		includes += '#include <%s>\n' % header
 	includes += '\n'
 	
-	initialisation_function = """void interrupt()
+	initialisation_function = """void %s()
 {
 	__asm
 	{
@@ -178,11 +181,11 @@ def process_main_function(module_name, image_base, new_name, procedure_lines, of
 
 %s;
 
-void __stdcall initialisation()
+void __stdcall %s()
 {
 	module_base = reinterpret_cast<unsigned>(GetModuleHandle(module_name));
 	if(module_base == 0)
-		interrupt();
+		%s();
 	
 	unsigned * call_addresses[] =
 	{
@@ -214,7 +217,7 @@ void __stdcall initialisation()
 	}
 	
 	if(!success)
-		interrupt();
+		%s();
 	
 	data_pointer += marker.size();
 	
@@ -225,15 +228,15 @@ void __stdcall initialisation()
 		DWORD old_protection;
 		SIZE_T const patch_size = 4;
 		if(!VirtualProtect(immediate_pointer, patch_size, PAGE_EXECUTE_READWRITE, &old_protection))
-			interrupt();
+			%s();
 		unsigned & address = *immediate_pointer;
 		address += linking_offset;
 		DWORD unused;
 		if(!VirtualProtect(immediate_pointer, patch_size, old_protection, &unused))
-			interrupt();
+			%s();
 		data_pointer += 5;
 	}
 }
-""" % (declaration_signature, call_addresses, len(intra_module_procedures), marker, new_name, linking_counter)
+""" % (interrupt_function_name, declaration_signature, initialisation_function_name, interrupt_function_name, call_addresses, len(intra_module_procedures), marker, new_name, interrupt_function_name, linking_counter, interrupt_function_name, interrupt_function_name)
 	
 	return (includes, variables, main_function, initialisation_function)
