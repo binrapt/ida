@@ -60,7 +60,7 @@ def process_file(module_name, input, target, name, output):
 	if type(target) == tuple:
 		end = find_target(lines, target[1], offset, True)
 	else:
-		end = find_target(lines, '%s endp' % procedure, offset, False)
+		end = find_target(lines, '%s endp' % target, offset, False)
 	if end == None:
 		print 'Unable to locate the end of the target in %s' % input
 		return False
